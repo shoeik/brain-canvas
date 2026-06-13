@@ -56,6 +56,36 @@ button {
   color: #fff;
 }
 
+.import-menu {
+  position: relative;
+}
+.import-menu__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 150px;
+  z-index: 20;
+  background: var(--chrome-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+.import-menu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-color);
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.import-menu__item:hover {
+  background: rgba(127, 127, 127, 0.18);
+}
+
 /* --- Space list -------------------------------------------------------- */
 .space-list {
   max-width: 880px;

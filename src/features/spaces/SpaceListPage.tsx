@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../../store/useAppStore";
 import { downloadJson, exportToJson, parseImportedJson } from "../../lib/storage";
+import { parseOpmlToSpace } from "../../lib/opml";
 import ThemeToggle from "../../components/ThemeToggle";
 
 const EXAMPLES = ["AI時代の情報収集", "個人開発", "人生設計", "UIアイデア"];
@@ -12,10 +13,13 @@ export default function SpaceListPage() {
   const theme = useAppStore((s) => s.theme);
   const createSpace = useAppStore((s) => s.createSpace);
   const deleteSpace = useAppStore((s) => s.deleteSpace);
+  const importSpace = useAppStore((s) => s.importSpace);
   const replaceAll = useAppStore((s) => s.replaceAll);
 
   const [name, setName] = useState("");
-  const fileInput = useRef<HTMLInputElement>(null);
+  const [importMenuOpen, setImportMenuOpen] = useState(false);
+  const jsonFileInput = useRef<HTMLInputElement>(null);
+  const opmlFileInput = useRef<HTMLInputElement>(null);
 
   const create = (value: string) => {
     const space = createSpace(value);
@@ -46,6 +50,20 @@ export default function SpaceListPage() {
     }
   };
 
+  const onImportOpmlFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const space = importSpace(parseOpmlToSpace(await file.text(), file.name));
+      navigate(`/space/${space.id}`);
+    } catch (err) {
+      alert(`OPML Import failed: ${(err as Error).message}`);
+    } finally {
+      e.target.value = "";
+      setImportMenuOpen(false);
+    }
+  };
+
   return (
     <div className="space-list">
       <div className="space-list__header">
@@ -54,16 +72,35 @@ export default function SpaceListPage() {
           <button className="bc-btn" onClick={onExport}>
             Export
           </button>
-          <button className="bc-btn" onClick={() => fileInput.current?.click()}>
-            Import
-          </button>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="application/json"
-            hidden
-            onChange={onImportFile}
-          />
+          <div className="import-menu">
+            <button className="bc-btn" onClick={() => setImportMenuOpen((open) => !open)}>
+              Import
+            </button>
+            {importMenuOpen && (
+              <div className="import-menu__panel">
+                <button
+                  className="import-menu__item"
+                  onClick={() => {
+                    setImportMenuOpen(false);
+                    jsonFileInput.current?.click();
+                  }}
+                >
+                  JSON Import
+                </button>
+                <button
+                  className="import-menu__item"
+                  onClick={() => {
+                    setImportMenuOpen(false);
+                    opmlFileInput.current?.click();
+                  }}
+                >
+                  OPML Import
+                </button>
+              </div>
+            )}
+          </div>
+          <input ref={jsonFileInput} type="file" accept="application/json,.json" hidden onChange={onImportFile} />
+          <input ref={opmlFileInput} type="file" accept=".opml,.xml,text/xml,application/xml" hidden onChange={onImportOpmlFile} />
           <ThemeToggle />
         </div>
       </div>

@@ -19,6 +19,7 @@ interface AppState {
   toggleTheme: () => void;
 
   createSpace: (name: string) => Space;
+  importSpace: (space: Space) => Space;
   renameSpace: (id: string, name: string) => void;
   deleteSpace: (id: string) => void;
   getSpace: (id: string) => Space | undefined;
@@ -55,6 +56,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
     set((s) => ({ spaces: [space, ...s.spaces] }));
     return space;
+  },
+
+  importSpace: (space) => {
+    const imported = { ...space, updatedAt: Date.now() };
+    set((s) => ({ spaces: [imported, ...s.spaces] }));
+    return imported;
   },
 
   renameSpace: (id, name) =>
