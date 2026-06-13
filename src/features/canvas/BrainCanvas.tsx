@@ -5,6 +5,7 @@ import {
   ConnectionMode,
   Controls,
   MiniMap,
+  PanOnScrollMode,
   ReactFlow,
   useReactFlow,
   type XYPosition,
@@ -43,9 +44,14 @@ export default function BrainCanvas() {
   // Collapse: hide descendants of any collapsed node.
   const { visibleNodes, visibleEdges } = useMemo(() => {
     const { hiddenNodes, hiddenEdges } = computeHidden(nodes, edges);
+    const nodesById = new Map(nodes.map((node) => [node.id, node]));
     return {
       visibleNodes: nodes.map((n) => (hiddenNodes.has(n.id) ? { ...n, hidden: true } : n)),
-      visibleEdges: edges.map((e) => (hiddenEdges.has(e.id) ? { ...e, hidden: true } : e)),
+      visibleEdges: edges.map((e) => ({
+        ...e,
+        ...autoHandlePair(nodesById.get(e.source), nodesById.get(e.target)),
+        hidden: hiddenEdges.has(e.id),
+      })),
     };
   }, [nodes, edges]);
 
@@ -106,10 +112,14 @@ export default function BrainCanvas() {
         zoomOnDoubleClick={false}
         // Left-drag on empty canvas draws a selection box ("囲んで選択").
         selectionOnDrag
-        // Pan with middle/right drag or Space+drag; wheel zooms to the cursor.
+        // Pan with middle/right drag or Space+drag; wheel/trackpad scroll pans.
         panOnDrag={[1, 2]}
-        zoomOnScroll
+        zoomOnScroll={false}
+        panOnScroll
+        panOnScrollMode={PanOnScrollMode.Free}
+        panOnScrollSpeed={0.8}
         zoomOnPinch
+        zoomActivationKeyCode={["Meta", "Control"]}
         selectionKeyCode={null}
         multiSelectionKeyCode={["Meta", "Shift"]}
         minZoom={0.1}
@@ -129,4 +139,33 @@ export default function BrainCanvas() {
       </ReactFlow>
     </div>
   );
+}
+
+function autoHandlePair(source?: BrainNode, target?: BrainNode) {
+  if (!source || !target) return {};
+
+  const sourceWidth = source.data.width ?? DEFAULT_NODE_WIDTH;
+  const sourceHeight = source.data.height ?? DEFAULT_NODE_HEIGHT;
+  const targetWidth = target.data.width ?? DEFAULT_NODE_WIDTH;
+  const targetHeight = target.data.height ?? DEFAULT_NODE_HEIGHT;
+  const sourceCenter = {
+    x: source.position.x + sourceWidth / 2,
+    y: source.position.y + sourceHeight / 2,
+  };
+  const targetCenter = {
+    x: target.position.x + targetWidth / 2,
+    y: target.position.y + targetHeight / 2,
+  };
+  const dx = targetCenter.x - sourceCenter.x;
+  const dy = targetCenter.y - sourceCenter.y;
+
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0
+      ? { sourceHandle: "r", targetHandle: "l" }
+      : { sourceHandle: "l", targetHandle: "r" };
+  }
+
+  return dy >= 0
+    ? { sourceHandle: "b", targetHandle: "t" }
+    : { sourceHandle: "t", targetHandle: "b" };
 }

@@ -108,7 +108,50 @@ export const useCanvasStore = create<CanvasState>()(
       },
 
       onNodesChange: (changes) =>
-        set((s) => ({ nodes: applyNodeChanges(changes, s.nodes) })),
+        set((s) => {
+          const dragged = changes
+            .flatMap((change) => {
+              if (change.type !== "position" || !change.position) return [];
+              const before = s.nodes.find((n) => n.id === change.id);
+              if (!before) return [];
+              return {
+                id: change.id,
+                dx: change.position.x - before.position.x,
+                dy: change.position.y - before.position.y,
+              };
+            })
+            .filter((move): move is { id: string; dx: number; dy: number } => {
+              return !!move && (move.dx !== 0 || move.dy !== 0);
+            });
+
+          const changedIds = new Set(changes.flatMap((change) => ("id" in change ? [change.id] : [])));
+          const descendantDeltas = new Map<string, XYPosition>();
+
+          for (const move of dragged) {
+            for (const childId of descendantIds(s.edges, move.id)) {
+              if (changedIds.has(childId)) continue;
+              const current = descendantDeltas.get(childId) ?? { x: 0, y: 0 };
+              descendantDeltas.set(childId, { x: current.x + move.dx, y: current.y + move.dy });
+            }
+          }
+
+          const nextNodes = applyNodeChanges(changes, s.nodes);
+          if (!descendantDeltas.size) return { nodes: nextNodes };
+
+          return {
+            nodes: nextNodes.map((node) => {
+              const delta = descendantDeltas.get(node.id);
+              if (!delta) return node;
+              return {
+                ...node,
+                position: {
+                  x: node.position.x + delta.x,
+                  y: node.position.y + delta.y,
+                },
+              };
+            }),
+          };
+        }),
 
       onEdgesChange: (changes) =>
         set((s) => ({ edges: applyEdgeChanges(changes, s.edges) })),
@@ -132,7 +175,16 @@ export const useCanvasStore = create<CanvasState>()(
 
       patchNodeData: (id, patch) =>
         set((s) => ({
-          nodes: s.nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)),
+          nodes: s.nodes.map((n) =>
+            n.id === id
+              ? {
+                  ...n,
+                  width: patch.width ?? n.width,
+                  height: patch.height ?? n.height,
+                  data: { ...n.data, ...patch },
+                }
+              : n,
+          ),
         })),
 
       deleteNodes: (ids) => {
@@ -292,6 +344,29 @@ function nodesEqual(a: BrainNode[], b: BrainNode[]): boolean {
     if (x.data !== y.data) return false; // content/size/font/collapse all live in data
   }
   return true;
+}
+
+function descendantIds(edges: BrainEdge[], rootId: string): string[] {
+  const childrenByParent = new Map<string, string[]>();
+  for (const edge of edges) {
+    const children = childrenByParent.get(edge.source) ?? [];
+    children.push(edge.target);
+    childrenByParent.set(edge.source, children);
+  }
+
+  const result: string[] = [];
+  const seen = new Set<string>([rootId]);
+  const queue = [...(childrenByParent.get(rootId) ?? [])];
+
+  while (queue.length) {
+    const id = queue.shift()!;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    result.push(id);
+    queue.push(...(childrenByParent.get(id) ?? []));
+  }
+
+  return result;
 }
 
 function throttleLeading<T extends (...args: never[]) => void>(fn: T, ms: number): T {

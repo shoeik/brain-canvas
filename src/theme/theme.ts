@@ -3,9 +3,9 @@ import type { NodeStyle, Theme } from "../types";
 /** Canvas (background) palette per app theme. */
 export const canvasTheme: Record<Theme, { background: string; dots: string; chrome: string; text: string }> = {
   dark: {
-    background: "#111111",
-    dots: "rgba(255,255,255,0.03)",
-    chrome: "#1b1b1b",
+    background: "#0f0f10",
+    dots: "rgba(255,255,255,0.04)",
+    chrome: "#1b1b1d",
     text: "#f5f5f5",
   },
   light: {
@@ -18,7 +18,7 @@ export const canvasTheme: Record<Theme, { background: string; dots: string; chro
 
 /** Connection (edge) stroke per theme — thin and quiet. */
 export const edgeStroke: Record<Theme, string> = {
-  dark: "rgba(255,255,255,0.15)",
+  dark: "rgba(255,255,255,0.18)",
   light: "rgba(0,0,0,0.18)",
 };
 
@@ -31,9 +31,9 @@ export interface NodeVisual {
 /** Node appearance per selectable node style (independent of canvas theme). */
 export const nodeVisuals: Record<NodeStyle, NodeVisual> = {
   dark: {
-    background: "#1e1e1e",
+    background: "#242426",
     color: "#f5f5f5",
-    borderRadius: 8,
+    borderRadius: 6,
   },
   light: {
     background: "#f5f5f5",
@@ -47,8 +47,11 @@ export const nodeVisuals: Record<NodeStyle, NodeVisual> = {
   },
 };
 
-export const DEFAULT_NODE_WIDTH = 200;
-export const DEFAULT_NODE_HEIGHT = 80;
-export const DEFAULT_FONT_SIZE = 16;
+export const DEFAULT_NODE_WIDTH = 140;
+export const DEFAULT_NODE_HEIGHT = 42;
+export const DEFAULT_FONT_SIZE = 19;
 export const MIN_FONT_SIZE = 10;
 export const MAX_FONT_SIZE = 48;
+export const MIN_NODE_WIDTH = 96;
+export const MIN_NODE_HEIGHT = 42;
+export const MAX_AUTO_NODE_WIDTH = 420;
