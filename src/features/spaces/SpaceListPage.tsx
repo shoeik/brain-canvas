@@ -14,10 +14,13 @@ export default function SpaceListPage() {
   const createSpace = useAppStore((s) => s.createSpace);
   const deleteSpace = useAppStore((s) => s.deleteSpace);
   const importSpace = useAppStore((s) => s.importSpace);
+  const renameSpace = useAppStore((s) => s.renameSpace);
   const replaceAll = useAppStore((s) => s.replaceAll);
 
   const [name, setName] = useState("");
   const [importMenuOpen, setImportMenuOpen] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renamingName, setRenamingName] = useState("");
   const jsonFileInput = useRef<HTMLInputElement>(null);
   const opmlFileInput = useRef<HTMLInputElement>(null);
 
@@ -62,6 +65,23 @@ export default function SpaceListPage() {
       e.target.value = "";
       setImportMenuOpen(false);
     }
+  };
+
+  const startRename = (e: React.SyntheticEvent, spaceId: string, currentName: string) => {
+    e.stopPropagation();
+    setRenamingId(spaceId);
+    setRenamingName(currentName);
+  };
+
+  const commitRename = () => {
+    if (renamingId) renameSpace(renamingId, renamingName);
+    setRenamingId(null);
+    setRenamingName("");
+  };
+
+  const cancelRename = () => {
+    setRenamingId(null);
+    setRenamingName("");
   };
 
   return (
@@ -134,18 +154,59 @@ export default function SpaceListPage() {
       ) : (
         <div className="space-grid">
           {spaces.map((sp) => (
-            <button
+            <div
               key={sp.id}
               className="space-card"
+              role="button"
+              tabIndex={0}
               onClick={() => navigate(`/space/${sp.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") navigate(`/space/${sp.id}`);
+              }}
             >
-              <span className="space-card__name">{sp.name}</span>
+              {renamingId === sp.id ? (
+                <input
+                  className="space-card__rename-input"
+                  autoFocus
+                  value={renamingName}
+                  onChange={(e) => setRenamingName(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                  onBlur={commitRename}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      commitRename();
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      cancelRename();
+                    }
+                  }}
+                />
+              ) : (
+                <span
+                  className="space-card__name"
+                  onDoubleClick={(e) => startRename(e, sp.id, sp.name)}
+                  title="ダブルクリックで名前を変更"
+                >
+                  {sp.name}
+                </span>
+              )}
               <span className="space-card__meta">
                 {sp.nodes.length} nodes · {new Date(sp.updatedAt).toLocaleDateString()}
               </span>
-              <span
+              <button
+                className="space-card__rename"
+                title="名前を変更"
+                aria-label="Rename space"
+                onClick={(e) => startRename(e, sp.id, sp.name)}
+              >
+                編集
+              </button>
+              <button
                 className="space-card__delete"
-                role="button"
                 aria-label="Delete space"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -153,8 +214,8 @@ export default function SpaceListPage() {
                 }}
               >
                 ×
-              </span>
-            </button>
+              </button>
+            </div>
           ))}
         </div>
       )}

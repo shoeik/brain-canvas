@@ -4,7 +4,6 @@ import type { BrainNode as BrainNodeType } from "../../../types";
 import { useCanvasStore } from "../../../store/useCanvasStore";
 import { hasChildren } from "../../../lib/mindmap";
 import {
-  MAX_AUTO_NODE_WIDTH,
   MIN_FONT_SIZE,
   MIN_NODE_HEIGHT,
   MIN_NODE_WIDTH,
@@ -15,6 +14,7 @@ import NodeContent from "./NodeContent";
 const NODE_PADDING_X = 24;
 const NODE_PADDING_Y = 16;
 const EMPTY_MEASURE_TEXT = "入力…";
+const LINE_HEIGHT = 1.35;
 
 /**
  * The single node type. It renders its content (read mode) or an inline editor
@@ -32,6 +32,8 @@ export default function BrainNode({ id, data, selected }: NodeProps<BrainNodeTyp
 
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
+  const editBaseSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const lastMeasuredContentRef = useRef<string | null>(null);
   const updateNodeInternals = useUpdateNodeInternals();
   const visual = nodeVisuals[nodeStyle];
   const fontSize = Math.max(MIN_FONT_SIZE, data.fontSize);
@@ -39,20 +41,32 @@ export default function BrainNode({ id, data, selected }: NodeProps<BrainNodeTyp
   useEffect(() => {
     if (editing && editorRef.current) {
       const el = editorRef.current;
+      editBaseSizeRef.current = {
+        width: data.width ?? MIN_NODE_WIDTH,
+        height: data.height ?? MIN_NODE_HEIGHT,
+      };
+      lastMeasuredContentRef.current = data.content;
       el.focus();
       el.setSelectionRange(el.value.length, el.value.length);
+    }
+    if (!editing) {
+      editBaseSizeRef.current = null;
+      lastMeasuredContentRef.current = null;
     }
   }, [editing]);
 
   useLayoutEffect(() => {
     if (!editing || !measureRef.current) return;
+    if (lastMeasuredContentRef.current === data.content) return;
 
     const measure = measureRef.current;
     const text = data.content || EMPTY_MEASURE_TEXT;
-    const minTextWidth = MIN_NODE_WIDTH - NODE_PADDING_X;
-    const maxTextWidth = MAX_AUTO_NODE_WIDTH - NODE_PADDING_X;
+    const lines = text.split("\n");
+    const baseSize = editBaseSizeRef.current ?? {
+      width: data.width ?? MIN_NODE_WIDTH,
+      height: data.height ?? MIN_NODE_HEIGHT,
+    };
 
-    measure.textContent = text.endsWith("\n") ? `${text} ` : text;
     measure.style.fontSize = `${fontSize}px`;
     measure.style.display = "inline-block";
     measure.style.width = "max-content";
@@ -60,17 +74,18 @@ export default function BrainNode({ id, data, selected }: NodeProps<BrainNodeTyp
     measure.style.wordBreak = "normal";
     measure.style.overflowWrap = "normal";
 
-    const naturalTextWidth = Math.ceil(measure.getBoundingClientRect().width);
-    const textWidth = Math.min(maxTextWidth, Math.max(minTextWidth, naturalTextWidth));
+    let widestLine = 0;
+    for (const line of lines) {
+      measure.textContent = line || " ";
+      widestLine = Math.max(widestLine, Math.ceil(measure.getBoundingClientRect().width));
+    }
 
-    measure.style.display = "block";
-    measure.style.width = `${textWidth}px`;
-    measure.style.whiteSpace = "pre-wrap";
-    measure.style.wordBreak = "break-word";
-    measure.style.overflowWrap = "anywhere";
-
-    const nextWidth = Math.ceil(textWidth + NODE_PADDING_X);
-    const nextHeight = Math.max(MIN_NODE_HEIGHT, Math.ceil(measure.scrollHeight + NODE_PADDING_Y));
+    const nextWidth = Math.max(baseSize.width, MIN_NODE_WIDTH, Math.ceil(widestLine + NODE_PADDING_X));
+    const nextHeight = Math.max(
+      baseSize.height,
+      MIN_NODE_HEIGHT,
+      Math.ceil(lines.length * fontSize * LINE_HEIGHT + NODE_PADDING_Y),
+    );
     const currentWidth = data.width ?? nextWidth;
     const currentHeight = data.height ?? nextHeight;
 
@@ -78,6 +93,7 @@ export default function BrainNode({ id, data, selected }: NodeProps<BrainNodeTyp
       patchNodeData(id, { width: nextWidth, height: nextHeight });
       updateNodeInternals(id);
     }
+    lastMeasuredContentRef.current = data.content;
   }, [data.content, data.height, data.width, editing, fontSize, id, patchNodeData, updateNodeInternals]);
 
   return (
@@ -121,6 +137,7 @@ export default function BrainNode({ id, data, selected }: NodeProps<BrainNodeTyp
             className="brain-node__editor nodrag nopan"
             value={data.content}
             placeholder="入力…"
+            wrap="off"
             onChange={(e) => updateNodeContent(id, e.target.value)}
             onBlur={() => setEditing(null)}
             // Keep global canvas shortcuts (Tab/Enter/Delete/Cmd+…) from firing
