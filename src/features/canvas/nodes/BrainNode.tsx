@@ -34,6 +34,7 @@ export default function BrainNode({ id, data, selected }: NodeProps<BrainNodeTyp
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const editBaseSizeRef = useRef<{ width: number; height: number } | null>(null);
+  const liveSizeRef = useRef<{ width: number; height: number } | null>(null);
   const lastMeasuredContentRef = useRef<string | null>(null);
   const updateNodeInternals = useUpdateNodeInternals();
   const visual = nodeVisuals[nodeStyle];
@@ -46,7 +47,7 @@ export default function BrainNode({ id, data, selected }: NodeProps<BrainNodeTyp
       const measure = measureRef.current;
       const text = content || EMPTY_MEASURE_TEXT;
       const lines = text.split("\n");
-      const baseSize = editBaseSizeRef.current ?? {
+      const baseSize = liveSizeRef.current ?? editBaseSizeRef.current ?? {
         width: data.width ?? MIN_NODE_WIDTH,
         height: data.height ?? MIN_NODE_HEIGHT,
       };
@@ -58,26 +59,25 @@ export default function BrainNode({ id, data, selected }: NodeProps<BrainNodeTyp
       measure.style.wordBreak = "normal";
       measure.style.overflowWrap = "normal";
 
-      let widestLine = editorRef.current?.scrollWidth ?? 0;
+      const editor = editorRef.current;
+      let widestLine = editor && editor.scrollWidth > editor.clientWidth + 1 ? editor.scrollWidth : 0;
       for (const line of lines) {
         measure.textContent = line || " ";
         widestLine = Math.max(widestLine, Math.ceil(measure.getBoundingClientRect().width));
       }
 
-      const nextWidth = Math.max(
-        baseSize.width,
-        MIN_NODE_WIDTH,
-        Math.ceil(widestLine + NODE_PADDING_X + NODE_TEXT_SAFETY_X),
-      );
+      const currentWidth = Math.max(baseSize.width, MIN_NODE_WIDTH);
+      const requiredWidth = Math.ceil(widestLine + NODE_PADDING_X + NODE_TEXT_SAFETY_X);
+      const nextWidth = requiredWidth > currentWidth ? requiredWidth : currentWidth;
       const nextHeight = Math.max(
         baseSize.height,
         MIN_NODE_HEIGHT,
         Math.ceil(lines.length * fontSize * LINE_HEIGHT + NODE_PADDING_Y),
       );
-      const currentWidth = data.width ?? nextWidth;
-      const currentHeight = data.height ?? nextHeight;
+      const currentHeight = baseSize.height;
 
       if (Math.abs(currentWidth - nextWidth) > 1 || Math.abs(currentHeight - nextHeight) > 1) {
+        liveSizeRef.current = { width: nextWidth, height: nextHeight };
         patchNodeData(id, { width: nextWidth, height: nextHeight });
         updateNodeInternals(id);
       }
@@ -93,12 +93,14 @@ export default function BrainNode({ id, data, selected }: NodeProps<BrainNodeTyp
         width: data.width ?? MIN_NODE_WIDTH,
         height: data.height ?? MIN_NODE_HEIGHT,
       };
+      liveSizeRef.current = editBaseSizeRef.current;
       lastMeasuredContentRef.current = data.content;
       el.focus();
       el.setSelectionRange(el.value.length, el.value.length);
     }
     if (!editing) {
       editBaseSizeRef.current = null;
+      liveSizeRef.current = null;
       lastMeasuredContentRef.current = null;
     }
   }, [editing]);
