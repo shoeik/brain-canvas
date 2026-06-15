@@ -13,6 +13,7 @@ import NodeContent from "./NodeContent";
 
 const NODE_PADDING_X = 24;
 const NODE_PADDING_Y = 16;
+const NODE_TEXT_SAFETY_X = 32;
 const EMPTY_MEASURE_TEXT = "入力…";
 const LINE_HEIGHT = 1.35;
 
@@ -57,13 +58,17 @@ export default function BrainNode({ id, data, selected }: NodeProps<BrainNodeTyp
       measure.style.wordBreak = "normal";
       measure.style.overflowWrap = "normal";
 
-      let widestLine = 0;
+      let widestLine = editorRef.current?.scrollWidth ?? 0;
       for (const line of lines) {
         measure.textContent = line || " ";
         widestLine = Math.max(widestLine, Math.ceil(measure.getBoundingClientRect().width));
       }
 
-      const nextWidth = Math.max(baseSize.width, MIN_NODE_WIDTH, Math.ceil(widestLine + NODE_PADDING_X));
+      const nextWidth = Math.max(
+        baseSize.width,
+        MIN_NODE_WIDTH,
+        Math.ceil(widestLine + NODE_PADDING_X + NODE_TEXT_SAFETY_X),
+      );
       const nextHeight = Math.max(
         baseSize.height,
         MIN_NODE_HEIGHT,

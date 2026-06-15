@@ -334,8 +334,12 @@ button {
   color: inherit;
   font: inherit;
   line-height: inherit;
+  letter-spacing: inherit;
   padding: 0;
   overflow: hidden;
+  overflow-wrap: normal;
+  white-space: pre;
+  word-break: normal;
   user-select: text;
 }
 .brain-node__measure {
@@ -344,11 +348,13 @@ button {
   left: 0;
   visibility: hidden;
   pointer-events: none;
-  white-space: pre-wrap;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  line-height: 1.35;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
   padding: 0;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
   z-index: -1;
 }
 .brain-node__link {
